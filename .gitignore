@@ -1,6 +1,7 @@
 *.pem
 *.env
-
+gcp_key.*
+gcp_key
 # Terraform
 .terraform/
 *.tfstate

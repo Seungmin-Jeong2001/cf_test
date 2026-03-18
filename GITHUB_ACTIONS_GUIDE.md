@@ -84,4 +84,31 @@ Terraform은 다음 순서대로 변수 값을 읽습니다:
 3.  `terraform.tfvars` 파일
 4.  변수 선언부의 `default` 값
 
-따라서 GitHub Actions에서 `TF_VAR_` 환경 변수를 설정해주면, 로컬의 `tfvars` 파일 없이도 안전하게 배포를 자동화할 수 있습니다.
+  💻 로컬 테스트 진행 가이드
+
+  로컬 컴퓨터에서 아래 순서대로 실행하여 인프라를 직접 올리고 테스트해 볼 수 있습니다.
+  1단계: terraform.tfvars 채우기
+  현재 비어있는 terraform/terraform.tfvars 파일에 실제 값을 입력합니다. (이 파일은 .gitignore에 의해 커밋되지 않으니 안심하세요.)
+
+  2단계: 인프라 생성
+   1 cd terraform
+   2 terraform init
+   3 terraform apply -auto-approve
+  생성이 완료되면 inventory.ini 파일이 자동으로 ansible/ 폴더에 생성됩니다.
+
+  3단계: 애플리케이션(Nginx + Tunnel) 배포
+
+   1 cd ../ansible
+   2 # SSH 키 권한 설정 (필요 시)
+   3 chmod 400 ../chilseongpa_keypair.pem
+   4 # 앤서블 실행
+   5 ansible-playbook -i inventory.ini deploy-tunnel.yml
+
+  4단계: 테스트 확인
+  브라우저에서 다음 주소로 접속해 보세요:
+   1. GCP 확인: https://app.yourdomain.com/1 -> "GCP (Main)" 메시지 확인.
+   2. AWS 확인: https://app.yourdomain.com/2 -> "AWS (Sub)" 메시지 확인.
+   3. 장애 테스트: GCP 인스턴스를 강제로 중지시킨 후, https://app.yourdomain.com/1에 다시 접속했을 때 AWS 페이지가 나오는지 확인 (약 1~2분 소요될 수 있음).
+
+  이렇게 로컬에서 성공하면, 그 이후에 수정된 코드들을 깃허브에 올리시면 됩니다! 시작해 보시겠어요?
+                                                                                                        

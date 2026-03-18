@@ -1,0 +1,8 @@
+cf_api_token   = ""
+cf_account_id  = ""
+cf_zone_id     = ""
+
+gcp_project_id  = "my-gcp-project-id"
+gcp_region      = "asia-northeast3"
+gcp_zone        = "asia-northeast3-a"
+gcp_credentials = "{}" # JSON content as string
