@@ -34,7 +34,7 @@ data "aws_ami" "al2023" {
 }
 
 resource "aws_instance" "k3s_server" {
-  ami                    = data.aws_ami.al2023.id
+  ami                    = "ami-0ea4d4b8dc1e46212" # Ubuntu 22.04
   instance_type          = "t3.small"
   key_name               = "chilseongpa_keypair"
   vpc_security_group_ids = [aws_security_group.k3s_sg.id]
@@ -52,7 +52,7 @@ resource "aws_security_group" "k3s_sg" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = var.ssh_cidr_blocks
+    cidr_blocks = ["0.0.0.0/0"]
   }
   egress {
     from_port   = 0
