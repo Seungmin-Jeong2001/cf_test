@@ -1,0 +1,14 @@
+*.pem
+*.env
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+*.log
+
+# Ansible
+ansible/inventory.ini
+

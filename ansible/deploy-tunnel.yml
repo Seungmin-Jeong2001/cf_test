@@ -1,0 +1,74 @@
+- name: Setup K3s and Cloudflare Tunnel
+  hosts: aws
+  become: yes
+  tasks:
+    - name: Install K3s
+      shell: curl -sfL https://get.k3s.io | sh -
+      args:
+        creates: /usr/local/bin/k3s # Only run if k3s is not installed
+
+    - name: Wait for K3s to be ready
+      wait_for:
+        path: /etc/rancher/k3s/k3s.yaml
+        state: present
+        timeout: 300
+
+    - name: Create K8s Secret (Cloudflare Token)
+      shell: |
+        KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl create secret generic tunnel-token \
+          --from-literal=token='{{ tunnel_token }}' --dry-run=client -o yaml | KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl apply -f -
+
+    - name: Deploy Tunnel Pod
+      shell: |
+        cat <<EOF | KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl apply -f -
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: cloudflared
+        spec:
+          selector:
+            matchLabels: { app: cloudflared }
+          template:
+            metadata:
+              labels: { app: cloudflared }
+            spec:
+              containers:
+              - name: cloudflared
+                image: cloudflare/cloudflared:latest
+                args: ["tunnel", "--no-autoupdate", "run", "--token", "\$(TUNNEL_TOKEN)"]
+                env:
+                  - name: TUNNEL_TOKEN
+                    valueFrom:
+                      secretKeyRef:
+                        name: tunnel-token
+                        key: token
+        ---
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: nginx-test
+        spec:
+          selector:
+            matchLabels: { app: nginx-test }
+          template:
+            metadata:
+              labels: { app: nginx-test }
+            spec:
+              containers:
+              - name: nginx
+                image: nginx:latest
+                ports:
+                - containerPort: 80
+        ---
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: nginx-service
+        spec:
+          selector:
+            app: nginx-test
+          ports:
+          - protocol: TCP
+            port: 80
+            targetPort: 80
+        EOF
