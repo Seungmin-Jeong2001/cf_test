@@ -35,13 +35,16 @@
               containers:
               - name: cloudflared
                 image: cloudflare/cloudflared:latest
-                args: ["tunnel", "--no-autoupdate", "run", "--token", "\$(TUNNEL_TOKEN)"]
+                # [수정된 부분] 쉘을 사용하여 $(TUNNEL_TOKEN)을 인식하게 함
+                command: ["/bin/sh", "-c"]
+                args: ["cloudflared tunnel --no-autoupdate run --token $TUNNEL_TOKEN"]
                 env:
                   - name: TUNNEL_TOKEN
                     valueFrom:
                       secretKeyRef:
                         name: tunnel-token
                         key: token
+                        
         ---
         apiVersion: apps/v1
         kind: Deployment
