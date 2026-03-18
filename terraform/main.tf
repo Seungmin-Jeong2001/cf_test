@@ -1,6 +1,6 @@
 terraform {
   required_providers {
-    aws = { source = "hashicorp/aws", version = "~> 5.0" }
+    aws        = { source = "hashicorp/aws", version = "~> 5.0" }
     cloudflare = { source = "cloudflare/cloudflare", version = "~> 4.0" }
   }
 }
@@ -21,11 +21,11 @@ data "aws_ami" "al2023" {
 
 # 1. AWS EC2 인스턴스
 resource "aws_instance" "k3s_server" {
-  ami           = data.aws_ami.al2023.id
-  instance_type = "t3.small"
-  key_name      = "chilseongpa_keypair"
+  ami                    = data.aws_ami.al2023.id
+  instance_type          = "t3.small"
+  key_name               = "chilseongpa_keypair"
   vpc_security_group_ids = [aws_security_group.k3s_sg.id]
-  tags = { Name = "k3s-server" }
+  tags                   = { Name = "k3s-server" }
 
   root_block_device {
     volume_size = 20
