@@ -1,93 +1,53 @@
 ---
-- name: Deploy Web & Cloudflare Tunnel on AWS
-  hosts: aws
+- name: Deploy Web & Cloudflare Tunnel on Ubuntu 24.04 (AWS & GCP)
+  hosts: all
   become: yes
   vars:
-    token: "{{ tunnel_token }}"
     ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+
   tasks:
-    - name: Install Nginx (AWS)
-      yum:
-        name: nginx
-        state: present
-
-    - name: Set Web Page Content (AWS)
-      shell: "echo '<h1>AWS (Sub) - /2</h1>' > /usr/share/nginx/html/index.html"
-
-    - name: Start and Enable Nginx
-      ansible.builtin.systemd:
-        name: nginx
-        state: started
-        enabled: yes
-
-    - name: Download Cloudflared (RPM)
-      get_url:
-        url: https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-x86_64.rpm
-        dest: /tmp/cloudflared.rpm
-
-    - name: Install Cloudflared
-      yum:
-        name: /tmp/cloudflared.rpm
-        state: present
-        disable_gpg_check: yes
-
-    - name: Uninstall existing Cloudflared service (if any)
-      shell: "cloudflared service uninstall"
-      ignore_errors: yes
-
-    - name: Install and Start Cloudflared Service
-      shell: "cloudflared service install {{ token }}"
+    # 1. Nginx 설치 (에러 방지를 위해 shell 사용)
+    - name: Update apt and Install Nginx
+      ansible.builtin.shell: "apt-get update && apt-get install -y nginx"
       args:
-        # 이전에 설치된 서비스가 있더라도 무시하고 새로 설치하기 위해 creates 주석 처리
-        # creates: /etc/systemd/system/cloudflared.service
-      notify: Restart Cloudflared
+        creates: /usr/sbin/nginx
 
-  handlers:
-    - name: Restart Cloudflared
-      ansible.builtin.systemd:
-        name: cloudflared
-        state: restarted
+    # 2. 서버별 웹 페이지 구분
+    - name: Set Web Content (AWS)
+      ansible.builtin.copy:
+        content: "<h1>AWS (Sub) - Ubuntu 24.04 - /2</h1>"
+        dest: /var/www/html/index.html
+        mode: '0644'
+      when: "'aws' in group_names"
 
-- name: Deploy Web & Cloudflare Tunnel on GCP
-  hosts: gcp
-  become: yes
-  vars:
-    token: "{{ tunnel_token }}"
-    ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
-  tasks:
-    - name: Install Nginx (GCP)
-      apt:
-        name: nginx
-        state: present
-        update_cache: yes
+    - name: Set Web Content (GCP)
+      ansible.builtin.copy:
+        content: "<h1>GCP (Main) - Ubuntu 24.04 - /1</h1>"
+        dest: /var/www/html/index.html
+        mode: '0644'
+      when: "'gcp' in group_names"
 
-    - name: Set Web Page Content (GCP)
-      shell: "echo '<h1>GCP (Main) - /1</h1>' > /var/www/html/index.html"
-
-    - name: Start and Enable Nginx
+    - name: Ensure Nginx is Running
       ansible.builtin.systemd:
         name: nginx
         state: started
         enabled: yes
 
-    - name: Download Cloudflared (DEB)
-      get_url:
+    # 3. Cloudflared 설치 및 서비스 등록
+    - name: Download Cloudflared (amd64 DEB)
+      ansible.builtin.get_url:
         url: https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
         dest: /tmp/cloudflared.deb
 
     - name: Install Cloudflared
-      apt:
-        deb: /tmp/cloudflared.deb
-        state: present
+      ansible.builtin.shell: "dpkg -i /tmp/cloudflared.deb || apt-get install -f -y"
 
-    - name: Uninstall existing Cloudflared service (if any)
-      shell: "cloudflared service uninstall"
+    - name: Uninstall existing Cloudflared service
+      ansible.builtin.shell: "cloudflared service uninstall"
       ignore_errors: yes
 
     - name: Install and Start Cloudflared Service
-      shell: "cloudflared service install {{ token }}"
-      # args:
-      #   creates: /etc/systemd/system/cloudflared.service
+      ansible.builtin.shell: "cloudflared service install {{ tunnel_token }}"
       notify: Restart Cloudflared
 
   handlers:
